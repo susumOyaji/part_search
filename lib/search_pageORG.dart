@@ -53,8 +53,8 @@ class _SearchPageState extends State<SearchPageORG> {
   List widgets = [];
   bool isLoading = false; //テーブル読み込み中の状態を保有する
 
-  List<Memo> _dowresponce = [];
-  List<Map<String, dynamic>> _singleList = [];
+  List _dowresponce = [];
+  List _singleList = [];
 
   bool isFirst = true;
   bool isSecond = false;
@@ -108,17 +108,6 @@ class _SearchPageState extends State<SearchPageORG> {
   //  return db.query('memo', where: "id = ?", whereArgs: [id], limit: 1);
   //}
 
-  // DBからデータを一件だけ取得するための関数
-  static Future<List<Map<String, dynamic>>> selectMemos(int id) async {
-    final db = await database;
-    return await db.query(
-      'memo',
-      where: "id = ?",
-      whereArgs: [id],
-      limit: 1,
-    );
-  }
-
   // DBにデータを挿入するための関数です。
   static Future<void> insertMemo(Memo memo) async {
     final Database db = await database;
@@ -151,22 +140,32 @@ class _SearchPageState extends State<SearchPageORG> {
     );
   }
 
-  Future<List<Memo>> initializeMemo() async {
-    List<Memo> _memoList = await selectAllMemos();
+  Future<List> initializeMemo() async {
+    final Database db = await database;
 
-    //return Future.delayed(const Duration(seconds: 3), () {
+    var Results = await db.query('memo');
+    var _memoList = Results.toList();
+    print(_memoList);
+
     return _memoList;
-    //"initializeDemo completed!!";
-    //});
   }
 
-  Future<List<Map<String, dynamic>>> singleMemo(int id) async {
-    List<Map<String, dynamic>> _memoList1 = await selectMemos(id);
+  // DBからデータを一件だけ取得するための関数
+  Future<List> singleMemo(int id) async {
+    //List<Map<String, dynamic>> _memoList1 = await selectMemos(id);
 
-    //return Future.delayed(const Duration(seconds: 3), () {
-    return _memoList1;
-    //"initializeDemo completed!!";
-    //});
+    final db = await database;
+
+    var Results = await db.query(
+      'memo',
+      where: "id = ?",
+      whereArgs: [id],
+      limit: 1,
+    );
+
+    var _memoList = Results.toList();
+
+    return _memoList;
   }
 
   // Stateのサブクラスを作成し、initStateをオーバーライドすると、wedgit作成時に処理を動かすことができる。
@@ -410,18 +409,24 @@ class _SearchPageState extends State<SearchPageORG> {
                     },
                   ),
                   ListView.builder(
+                    //reverse: true, // この行を追加
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _singleList.length,
+                    itemCount: _dowresponce.length,
                     itemBuilder: (BuildContext context, int index) {
-                      return ListTile(
-                        title: Text(_dowresponce.toString()),
+                      return Card(
+                        child: ListTile(
+                          title: Text(_dowresponce[index].toString(),
+                              style: const TextStyle(fontSize: 10)
 
-                        //HighlightedText(
-                        // wholeString: searchResults[index],
-                        // highlightedString: controller!.text,
-                        // isCaseSensitive: isCaseSensitive,
-                        //),
+                              /*
+                          HighlightedText(
+                          wholeString: searchResults[index],
+                          highlightedString: controller!.text,
+                          isCaseSensitive: isCaseSensitive,
+                        ),*/
+                              ),
+                        ),
                       );
                     },
                   ),
