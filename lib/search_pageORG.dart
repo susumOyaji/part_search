@@ -200,6 +200,11 @@ class _SearchPageState extends State<SearchPageORG> {
     final Results =
         await db.query('memo', where: 'board LIKE ?', whereArgs: ['${text}%']);
 
+    final List<Memo> maps = await selectAllMemos();
+    final result1 = maps.asMap();
+    final result2 = result1.containsValue("b001");
+    print(result2);
+
     if (Results.isEmpty) {
       print('empty');
       return;
@@ -343,6 +348,24 @@ class _SearchPageState extends State<SearchPageORG> {
     _dowresponce = await initializeMemo(); ////Memosテーブルを全件読み込む
     _singleList = await singleMemo(1);
     setState(() => isLoading = false); //「読み込み済」の状態にする
+
+    //このように書くことで「board」から始まるtextにマッチします。
+    final text = '001';
+    final Database db = await database;
+    final Results =
+        await db.query('memo', where: 'board LIKE ?', whereArgs: ['${text}%']);
+    String json = Results.toString();
+    RegExp searchstring = RegExp(r'Location:.....');
+
+    List<String?> searchresuit =
+        searchstring.allMatches(json).map((match) => match.group(0)).toList();
+
+    print('既に$searchresuitに登録されています。');
+
+    final List<Memo> maps = await selectAllMemos();
+    final result1 = maps.asMap();
+    final result2 = result1.containsValue("b001");
+    print(result2);
   }
 
   @override
