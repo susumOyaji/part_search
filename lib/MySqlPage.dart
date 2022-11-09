@@ -3,30 +3,43 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:async';
 import 'package:path/path.dart';
 
+//picking
+//Undetected
 class Memo {
   final int id;
-  final String text;
+  final String location; //場所
+  final String rackboard; //棚＆板台車
+  final String container; //点箱
+  final String parts; //部品
 
-  Memo({required this.id, required this.text});
+  Memo(
+      {required this.id,
+      required this.location,
+      required this.rackboard,
+      required this.container,
+      required this.parts});
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'text': text,
+      'Location': location,
+      'Rackboard': rackboard,
+      'Container': container,
+      'Parts': parts,
     };
   }
 
   @override
   String toString() {
-    return 'Memo{id: $id, text: $text}';
+    return 'Memo{id: $id, Location: $location,Rackboard: $rackboard,Container: $container,Parts: $parts}';
   }
 
   static Future<Database> get database async {
     final Future<Database> _database = openDatabase(
-      join(await getDatabasesPath(), 'memo_database.db'),
+      join(await getDatabasesPath(), 'parts_database.db'),
       onCreate: (db, version) {
         return db.execute(
-          "CREATE TABLE memo(id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT)",
+          "CREATE TABLE memo(id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT, rackboard TEXT,container TEXT,parts TEXT)",
         );
       },
       version: 1,
@@ -49,7 +62,10 @@ class Memo {
     return List.generate(maps.length, (i) {
       return Memo(
         id: maps[i]['id'],
-        text: maps[i]['text'],
+        location: maps[i]['location'],
+        rackboard: maps[i]['rackboard'],
+        container: maps[i]['container'],
+        parts: maps[i]['parts'],
       );
     });
   }
@@ -63,6 +79,14 @@ class Memo {
       whereArgs: [memo.id],
       conflictAlgorithm: ConflictAlgorithm.fail,
     );
+  }
+
+  //指定したテーブルのシーケンスインデックスがリセットされます
+  static Future<void> resetId() async {
+    //await db!.delete('table_name');
+    final db = await database;
+    await db.update('sqlite_sequence', {'seq': 2},
+        where: 'name = ?', whereArgs: ['parts_database.db']);
   }
 
   static Future<void> deleteMemo(int id) async {
@@ -109,10 +133,11 @@ class _MySqlPageState extends State<MySqlPage> {
   bool searchResultsValue = false;
 
   Future<void> initializeDemo() async {
+    await Memo.resetId();
     _memoList = await Memo.getMemos();
 
-    var res = search('a001');
-    print('RES$res');
+    var res = search('b001');
+    print('DetectionID: $res');
   }
 
   @override
@@ -136,23 +161,22 @@ class _MySqlPageState extends State<MySqlPage> {
       bool resultkey = fruits.containsKey('id');
       bool resultValue = fruits.containsValue(query);
 
-      print('toMap${fruits}');
-      print(resultkey);
-      print(resultValue);
+      print('toMap: ${fruits}');
+      print('KEY: $resultkey');
+      print('Value: $resultValue');
 
       if (resultValue == true) {
         return index;
-      } else {
-        return 'nonMatch';
       }
     }
+    return 'Undetected';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('メモアプリ'),
+        title: const Text('Flutter SQL'),
       ),
       body: Container(
         padding: const EdgeInsets.all(32),
@@ -174,9 +198,11 @@ class _MySqlPageState extends State<MySqlPage> {
                       'ID ${_memoList[index].id}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    title: Text('${_memoList[index].text}'),
+                    title: Text('${_memoList[index]}',
+                        style: const TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.bold)),
                     trailing: SizedBox(
-                      width: 76,
+                      width: 56,
                       height: 25,
                       child: ElevatedButton.icon(
                         onPressed: () async {
@@ -192,8 +218,8 @@ class _MySqlPageState extends State<MySqlPage> {
                           size: 18,
                         ),
                         label: const Text(
-                          '削除',
-                          style: TextStyle(fontSize: 11),
+                          'x',
+                          //style: TextStyle(fontSize: 8),
                         ),
                         //color: Colors.red,
                         //textColor: Colors.white,
@@ -216,7 +242,7 @@ class _MySqlPageState extends State<MySqlPage> {
               showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
-                        title: const Text("新規メモ作成"),
+                        title: const Text("新規ADD"),
                         content: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
@@ -227,7 +253,11 @@ class _MySqlPageState extends State<MySqlPage> {
                               onPressed: () async {
                                 Memo _memo = Memo(
                                     id: _memoList.length,
-                                    text: myController.text);
+                                    location: myController.text,
+                                    rackboard: '*',
+                                    container: '*',
+                                    parts: '*');
+
                                 await Memo.insertMemo(_memo);
                                 final List<Memo> memos = await Memo.getMemos();
                                 setState(() {
@@ -264,7 +294,7 @@ class _MySqlPageState extends State<MySqlPage> {
                                     Flexible(
                                       flex: 1,
                                       child: DropdownButton(
-                                        hint: Text("ID"),
+                                        hint: const Text("ID"),
                                         value: _selectedvalue,
                                         onChanged: (newValue) {
                                           setState(() {
@@ -291,7 +321,10 @@ class _MySqlPageState extends State<MySqlPage> {
                                   onPressed: () async {
                                     Memo updateMemo = Memo(
                                         id: _selectedvalue,
-                                        text: upDateController.text);
+                                        location: upDateController.text,
+                                        rackboard: '*',
+                                        container: '*',
+                                        parts: '*');
                                     await Memo.updateMemo(updateMemo);
                                     final List<Memo> memos =
                                         await Memo.getMemos();
