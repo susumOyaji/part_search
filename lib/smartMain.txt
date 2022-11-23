@@ -1,0 +1,140 @@
+////////////////////////////////
+// File path to a file in the current directory
+//データベースを開く
+//データベースは、ファイル システム内のパスで表される 1 つのファイルです。
+
+Future datebese() async {
+String dbPath = 'sample.db';
+DatabaseFactory dbFactory = databaseFactoryIo;
+
+// We use the database factory to open the database
+Database db = await dbFactory.openDatabase(dbPath);
+}
+
+
+
+// dynamically typed store
+//レコードの読み取りと書き込み
+//レコードの書き込みと読み取りの簡単な例
+var store = StoreRef.main();
+// Easy to put/get simple values or map
+// A key can be of type int or String and the value can be anything as long as it can
+// be properly JSON encoded/decoded
+await store.record('title').put(db, 'Simple application');
+await store.record('version').put(db, 10);
+await store.record('settings').put(db, {'offline': true});
+
+// read values
+var title = await store.record('title').get(db) as String;
+var version = await store.record('version').get(db) as int;
+var settings = await store.record('settings').get(db) as Map;
+  
+// ...and delete
+await store.record('version').delete(db);
+
+
+
+
+//Store 
+//このストアには、IndexedDB ストアおよびデータストア エンティティといくつかの類似点があります。データベースには、
+//簡単にアクセスできるように常にメインストアがあり(上記の例のように、または通常はシングルトンを保存するため)、
+//開発者がエンティティ固有のデータ(同じ「タイプ」のレコードのリストなど)を格納する無限の数のストアの場合
+// Use the animals store using Map records with int keys
+var store = intMapStoreFactory.store('animals');
+
+// Store some objects
+  await db.transaction((txn) async {
+  await store.add(txn, {'name': 'fish'});
+  await store.add(txn, {'name': 'cat'});
+  
+  // You can specify a key
+  await store.record(10).put(txn, {'name': 'dog'});
+});
+
+
+
+//APIはDartストロングモードを利用して、データベースアクセスがエラーになりにくくします。
+// Use the main store for storing key values as String
+var store = StoreRef<String, String>.main();
+
+// Writing the data
+await store.record('username').put(db, 'my_username');
+await store.record('url').put(db, 'my_url');
+
+// Reading the data
+var url = await store.record('url').get(db);
+var username = await store.record('username').get(db);
+
+
+
+//レコード値が Map 型の場合、エスケープしない限り、レコード フィールドはドット (.) を使用して参照できます。
+var store = intMapStoreFactory.store();
+var key = await store.add(db, {'path': {'sub': 'my_value'}, 'with.dots': 'my_other_value'});
+
+var record = await store.record(key).getSnapshot(db);
+var value = record['path.sub'];
+// value = 'my_value'
+var value2 = record[FieldKey.escape('with.dots')];
+// value2 = 'my_other_value'
+
+
+//自動インクリメント
+//キーが指定されていない場合、オブジェクトは自動インクリメント値で挿入されます
+var store = StoreRef<int, String>.main();
+// Auto incrementation is built-in
+var key1 = await store.add(db, 'value1');
+var key2 = await store.add(db, 'value2');
+// key1 = 1, key2 = 2...
+
+
+
+//トランザクション
+//アクションは、一貫性と最適化のためにトランザクションにグループ化できます(ファイルシステムでの1回の書き込み)。 エラーがスローされた場合、トランザクションは取り消され、変更は元に戻されます。
+//デッドロックを回避するには、既存の Database オブジェクトまたは Store オブジェクトを使用しないでください。
+await db.transaction((txn) async {
+  await store.add(txn, 'value1');
+  await store.add(txn, 'value2');
+});
+
+
+
+
+//シンプルな検索メカニズム
+//フィルタリングと並べ替えは、任意のフィールドで実行できます
+// Use the animals store using Map records with int keys
+var store = intMapStoreFactory.store('animals');
+
+// Store some objects
+await db.transaction((txn) async {
+  await store.add(txn, {'name': 'fish'});
+  await store.add(txn, {'name': 'cat'});
+  await store.add(txn, {'name': 'dog'});
+});
+
+// Look for any animal "greater than" (alphabetically) 'cat'
+// ordered by name
+var finder = Finder(
+    filter: Filter.greaterThan('name', 'cat'),
+    sortOrders: [SortOrder('name')]);
+var records = await store.find(db, finder: finder);
+
+expect(records.length, 2);
+expect(records[0]['name'], 'dog');
+expect(records[1]['name'], 'fish');
+
+
+
+
+//コーデックと暗号化
+//Sembastは、ディスクへの読み取り/書き込み時にデータをエンコード/デコードするためのユーザー定義コーデックの使用をサポートしています。
+//暗号化をサポートする方法を提供します。暗号化自体はセンバストの一部ではなく、単純な例です 暗号化コーデックは Test フォルダーで提供されます。
+// Initialize the encryption codec with a user password
+var codec = getEncryptSembastCodec(password: '[your_user_password]');
+
+// Open the database with the codec
+Database db = await factory.openDatabase(dbPath, codec: codec);
+
+// ...your database is ready to use
+
+//フィルタリング
+Finder(filter: Filter.greaterThan('name', 'cat'), sortOrders: [SortOrder('name')])
